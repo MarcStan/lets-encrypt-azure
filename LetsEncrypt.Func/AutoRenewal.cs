@@ -33,7 +33,8 @@ namespace LetsEncrypt.Func
         public static async Task<IActionResult> ExecuteManuallyAsync(
             [HttpTrigger(AuthorizationLevel.Function, "POST", Route = "")] HttpRequestMessage req,
             ILogger log,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Microsoft.Azure.WebJobs.ExecutionContext executionContext)
         {
             var q = req.RequestUri.ParseQueryString();
             var overrides = new Overrides
@@ -43,7 +44,7 @@ namespace LetsEncrypt.Func
             };
             try
             {
-                await RenewAsync(overrides, log, cancellationToken);
+                await RenewAsync(overrides, log, cancellationToken, executionContext);
                 return new AcceptedResult();
             }
             catch (Exception)
@@ -67,16 +68,18 @@ namespace LetsEncrypt.Func
         public static Task RenewAsync(
           [TimerTrigger(Schedule.Daily)] TimerInfo timer,
           ILogger log,
-          CancellationToken cancellationToken)
-            => RenewAsync((Overrides)null, log, cancellationToken);
+          CancellationToken cancellationToken,
+          Microsoft.Azure.WebJobs.ExecutionContext executionContext)
+            => RenewAsync((Overrides)null, log, cancellationToken, executionContext);
 
-        private static async Task RenewAsync(Overrides overrides, ILogger log, CancellationToken cancellationToken)
+        private static async Task RenewAsync(Overrides overrides, ILogger log, CancellationToken cancellationToken,
+          Microsoft.Azure.WebJobs.ExecutionContext executionContext)
         {
             // internal storage (used for letsencrypt account metadata)
             IStorageProvider storageProvider = new AzureBlobStorageProvider(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "letsencrypt");
 
             IConfigurationProcessor processor = new ConfigurationProcessor();
-            var configurations = await LoadConfigFilesAsync(storageProvider, processor, log, cancellationToken);
+            var configurations = await LoadConfigFilesAsync(storageProvider, processor, log, cancellationToken, executionContext);
             IAuthenticationService authenticationService = new AuthenticationService(storageProvider);
             var az = new AzureHelper();
 
@@ -138,7 +141,8 @@ namespace LetsEncrypt.Func
             IStorageProvider storageProvider,
             IConfigurationProcessor processor,
             ILogger log,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Microsoft.Azure.WebJobs.ExecutionContext executionContext)
 
         {
             var configs = new List<(string, Configuration)>();
@@ -161,7 +165,8 @@ namespace LetsEncrypt.Func
             if (!paths.Any())
             {
                 log.LogWarning("No config files found. Placing config/sample.json in storage!");
-                var content = await File.ReadAllTextAsync("sample.json", cancellationToken);
+                string sampleJsonPath = Path.Combine(executionContext.FunctionAppDirectory, "sample.json");
+                var content = await File.ReadAllTextAsync(sampleJsonPath, cancellationToken);
                 await storageProvider.SetAsync("config/sample.json", content, cancellationToken);
             }
             return configs.ToArray();

@@ -32,16 +32,18 @@ namespace LetsEncrypt.Func
         public static Task RenewAsync(
           [TimerTrigger(Schedule.TwiceDaily)] TimerInfo timer,
           ILogger log,
-          CancellationToken cancellationToken)
-            => CheckDomainsForValidCertificateAsync(log, cancellationToken);
+          CancellationToken cancellationToken,
+          Microsoft.Azure.WebJobs.ExecutionContext executionContext)
+            => CheckDomainsForValidCertificateAsync(log, cancellationToken, executionContext);
 
-        private static async Task CheckDomainsForValidCertificateAsync(ILogger log, CancellationToken cancellationToken)
+        private static async Task CheckDomainsForValidCertificateAsync(ILogger log, CancellationToken cancellationToken,
+            Microsoft.Azure.WebJobs.ExecutionContext executionContext)
         {
             // internal storage (used for letsencrypt account metadata)
             IStorageProvider storageProvider = new AzureBlobStorageProvider(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "letsencrypt");
 
             IConfigurationProcessor processor = new ConfigurationProcessor();
-            var configurations = await AutoRenewal.LoadConfigFilesAsync(storageProvider, processor, log, cancellationToken);
+            var configurations = await AutoRenewal.LoadConfigFilesAsync(storageProvider, processor, log, cancellationToken, executionContext);
             IAuthenticationService authenticationService = new AuthenticationService(storageProvider);
             var az = new AzureHelper();
 
