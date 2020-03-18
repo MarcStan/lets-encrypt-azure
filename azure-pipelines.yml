@@ -16,7 +16,6 @@ schedules:
 variables:
   - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
     value: true
-  - group: 'Deployment Credentials'
   - name: ResourceGroupName
     value: 'letsencrypt-func'
   
