@@ -4,7 +4,7 @@ on:
       - master
 
 env:
-  ResourceGroup: letsencrypt-func
+  ResourceGroup: playtherapy-letsencrypt
 jobs:
   build:
     runs-on: ubuntu-latest
